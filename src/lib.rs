@@ -155,7 +155,7 @@ impl Ballot {
 
     pub fn cast_vote(&mut self, candidate: AccountId) {
         if self.election_duration.is_in_future() {
-            env::panic(b"Voting has not started");
+            env::panic(b"Election has not started");
         }
         if self.election_duration.is_expired() {
             env::panic(b"Election period has ended");
