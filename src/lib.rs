@@ -14,6 +14,7 @@ const ELECTION_DURATION: u64 = 3 * 60 * 1000 * 1_000_000; // 30 days
 const CANDIDATE_REGISTRATION_DURATION: u64 = 3 * 60 * 1000 * 1_000_000; // 5 days
 const VOTER_REGISTRATION_DURATION: u64 = 3 * 60 * 1000 * 1_000_000; // 5 days
 
+//TODO: Get election results
 #[derive(BorshSerialize, BorshStorageKey)]
 pub enum StorageKeys {
     Candidate,
