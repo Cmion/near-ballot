@@ -1,10 +1,13 @@
 pub mod duration;
+pub mod event;
 
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::collections::{UnorderedMap, UnorderedSet};
 use near_sdk::{env, near_bindgen, AccountId, BorshStorageKey};
+use std::collections::HashMap;
 
 use crate::duration::*;
+use crate::event::*;
 
 near_sdk::setup_alloc!();
 
@@ -102,6 +105,27 @@ impl Ballot {
             .count() as u64
     }
 
+    pub fn get_election_results(&self) -> Vec<(AccountId, u64)> {
+        if self.candidate_registration_duration.is_active()
+            || self.voter_registration_duration.is_active()
+        {
+            env::panic("Election has not started".as_bytes());
+        }
+        if !self.election_duration.is_expired() {
+            env::panic("Cannot get results: Voting is still on".as_bytes());
+        }
+        let candidates = self.get_candidates();
+
+        candidates
+            .into_iter()
+            .map(|candidate| {
+                let candidate_account_id = AccountId::from(candidate);
+                let votes = self.get_candidate_votes_count(&candidate_account_id);
+                (candidate_account_id, votes)
+            })
+            .collect()
+    }
+
     pub fn voter_has_registered(&self, voter: &AccountId) -> bool {
         self.voters.contains(voter)
     }
@@ -127,12 +151,20 @@ impl Ballot {
         //     near_sdk::env::panic(b"You need to pay to register a candidate");
         // }
         let candidate = env::predecessor_account_id();
+
+        let mut event_data = HashMap::new();
+        event_data.insert(String::from("candidate"), candidate.to_string());
+
         if !self.candidates.contains(&candidate) {
             self.candidates.insert(&candidate);
-            env::log(
-                format!("You successfully registered as a candidate: {}", candidate).as_bytes(),
-            )
+
+            Event::new(EventTypes::CandidateRegistered, event_data).emit();
         } else {
+            event_data.insert(
+                String::from("error"),
+                String::from("Candidate already registered"),
+            );
+            Event::new(EventTypes::CandidateRegistrationFailed, event_data).emit();
             env::panic("Candidate already registered".as_bytes());
         }
     }
@@ -145,10 +177,19 @@ impl Ballot {
             env::panic(b"Voter registration period has ended");
         }
         let voter = env::predecessor_account_id();
+
+        let mut event_data = HashMap::new();
+        event_data.insert(String::from("voter"), voter.to_string());
         if !self.voters.contains(&voter) {
             self.voters.insert(&voter);
-            env::log(format!("You have successfully registered as |{}| to vote", voter).as_bytes())
+            // env::log(format!("You have successfully registered as |{}| to vote", voter).as_bytes())
+            Event::new(EventTypes::VoterRegistered, event_data).emit();
         } else {
+            event_data.insert(
+                String::from("error"),
+                String::from("Voter already registered"),
+            );
+            Event::new(EventTypes::VotersRegistrationFailed, event_data).emit();
             env::panic("Voter already registered".as_bytes());
         }
     }
@@ -176,6 +217,12 @@ impl Ballot {
         self.voters.insert(&voter);
         self.votes.insert(&voter, &candidate);
 
-        env::log(format!("{} voted for {}", voter, candidate).as_bytes());
+        let mut event_data = HashMap::new();
+        event_data.insert(String::from("voter"), voter.to_string());
+        event_data.insert(String::from("candidate"), candidate.to_string());
+
+        Event::new(EventTypes::CastVote, event_data).emit();
+
+        // env::log(format!("{} voted for {}", voter, candidate).as_bytes());
     }
 }

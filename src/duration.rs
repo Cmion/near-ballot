@@ -68,24 +68,10 @@ impl BallotDuration {
 
     pub fn is_expired(&self) -> bool {
         let now = env::block_timestamp();
-        env::log(
-            format!(
-                "(Expired) Start={:?} End={:?} Now={:?}",
-                self.start, self.end, now
-            )
-            .as_bytes(),
-        );
         self.end <= now
     }
     pub fn is_in_future(&self) -> bool {
         let now = env::block_timestamp();
-        env::log(
-            format!(
-                "(Future) Start={:?} End={:?} Now={:?}",
-                self.start, self.end, now
-            )
-            .as_bytes(),
-        );
         self.start > now
     }
 }
